@@ -16,7 +16,7 @@ class Graph:
             print(row)
 
 class Ant:
-    def __init__(self, id):
+    def __init__(self, id):     
         self.id = id
         self.route = []
         self.total_time = 0
@@ -162,10 +162,10 @@ def main():
 
     num_points = nombres_objets * 2
     graph = Graph(num_points, temps_min, temps_max)
-    graph.afficher_temps_trajet()  # Afficher les temps de trajet
+    graph.afficher_temps_trajet()  
     ants = [Ant(i+1) for i in range(nombres_camions)]
 
-    graph.afficher_temps_trajet()  # Assurez-vous que la matrice des temps de trajet est imprimée ici
+    graph.afficher_temps_trajet() 
     simulate(graph, logistics, ants)
     draw_routes(graph, ants)
 
