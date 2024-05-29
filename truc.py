@@ -15,6 +15,7 @@ class Graph:
         for row in self.travel_time:
             print(row)
 
+
 class Ant:
     def __init__(self, id):
         self.id = id
@@ -106,11 +107,9 @@ def simulate(graph, logistics, ants, iterations=100):
                 print(f"Ant {ant.id} at city {current_city} moving to {next_city}, total time now: {ant.total_time}")
 
 def draw_routes(graph, ants):
+    plt.figure(figsize=(10, 8))
     best_time = float('inf')
     best_route = None
-
-    plt.figure(figsize=(10, 8))
-
     for ant in ants:
         route_coords = [graph.coordinates[city] for city in ant.route]
         plt.plot([coord[0] for coord in route_coords], [coord[1] for coord in route_coords], 'o-', label=f"Ant {ant.id}")
@@ -129,27 +128,13 @@ def draw_routes(graph, ants):
     plt.show()
 
     if best_route is not None:
-        draw_best_route(graph, best_route, best_time)
-
-def draw_best_route(graph, best_route, best_time):
-    plt.figure(figsize=(10, 8))
-    route_coords = [graph.coordinates[city] for city in best_route]
-    plt.plot([coord[0] for coord in route_coords], [coord[1] for coord in route_coords], 'o-', color='red', label="Best Route")
-    for city, coords in graph.coordinates.items():
-        plt.text(coords[0], coords[1], city, fontsize=12, ha='right')
-    plt.legend()
-    plt.title(f"Best Route (Total Time: {best_time})")
-    plt.xlabel("X Coordinate")
-    plt.ylabel("Y Coordinate")
-    plt.grid(True)
-    plt.show()
-
-    print(f"Best route: {' -> '.join(map(str, best_route))}")
-    print(f"Total travel time: {best_time}")
+        best_route_cities = best_route
+        print(f"Quickest route: {' -> '.join(map(str, best_route_cities))}")
+        print(f"Total travel time: {best_time}")
 
 def main():
-    #random.seed(42)
-    #np.random.seed(42)
+    random.seed(42)
+    np.random.seed(42)
 
     nombres_objets = 10
     nombres_camions = 3
@@ -165,7 +150,6 @@ def main():
     graph.afficher_temps_trajet()  # Afficher les temps de trajet
     ants = [Ant(i+1) for i in range(nombres_camions)]
 
-    graph.afficher_temps_trajet()  # Assurez-vous que la matrice des temps de trajet est imprimée ici
     simulate(graph, logistics, ants)
     draw_routes(graph, ants)
 

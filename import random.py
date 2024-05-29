@@ -148,8 +148,8 @@ def draw_best_route(graph, best_route, best_time):
     print(f"Total travel time: {best_time}")
 
 def main():
-    #random.seed(42)
-    #np.random.seed(42)
+    random.seed(42)
+    np.random.seed(42)
 
     nombres_objets = 10
     nombres_camions = 3
