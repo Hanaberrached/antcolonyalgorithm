@@ -9,14 +9,18 @@ class Graph:
         self.coordinates = {i: (random.uniform(0, 100), random.uniform(0, 100)) for i in range(1, num_points + 1)}
         self.travel_time = np.array(generer_temps_trajet(num_points, temps_min, temps_max))
         self.pheromone = np.ones((num_points, num_points)) * 0.1
+        self.start_city = random.randint(1, num_points)  # Ville de départ/arrivée aléatoire
 
     def afficher_temps_trajet(self):
         print("Matrice des temps de trajet :")
         for row in self.travel_time:
             print(row)
 
+    def afficher_ville_depart(self):
+        print(f"Ville de départ/arrivée : {self.start_city}")
+
 class Ant:
-    def __init__(self, id):     
+    def __init__(self, id):
         self.id = id
         self.route = []
         self.total_time = 0
@@ -74,18 +78,19 @@ def simulate(graph, logistics, ants, iterations=100):
     beta = 2.0
     evaporation = 0.5
     pheromone_boost = 1.0
+    start_city = graph.start_city  # Ville de départ/arrivée
 
     for _ in tqdm(range(iterations), desc="Simulation Progress"):
         for ant in ants:
-            ant.route = []
+            ant.route = [start_city]  # Commencer à la ville de départ
             ant.total_time = 0
 
         for route in logistics.grand_tableau:
             camion_index = route[2][0] - 1
             ant = ants[camion_index]
-            current_city = route[0]
+            current_city = start_city
             destination_city = route[1]
-            ant.route.append(current_city)
+            ant.route.append(route[0])  # Ajouter la ville de collecte
 
             while current_city != destination_city:
                 probabilities = np.array([
@@ -104,6 +109,9 @@ def simulate(graph, logistics, ants, iterations=100):
                 graph.pheromone[current_city-1, next_city-1] += pheromone_boost / graph.travel_time[current_city-1, next_city-1]
                 current_city = next_city
                 print(f"Ant {ant.id} at city {current_city} moving to {next_city}, total time now: {ant.total_time}")
+
+            ant.route.append(start_city)  # Retourner à la ville de départ
+            ant.total_time += graph.travel_time[current_city-1, start_city-1]
 
 def draw_routes(graph, ants):
     best_time = float('inf')
@@ -148,8 +156,8 @@ def draw_best_route(graph, best_route, best_time):
     print(f"Total travel time: {best_time}")
 
 def main():
-    #random.seed(42)
-    #np.random.seed(42)
+    random.seed(42)
+    np.random.seed(42)
 
     nombres_objets = 10
     nombres_camions = 3
@@ -162,10 +170,10 @@ def main():
 
     num_points = nombres_objets * 2
     graph = Graph(num_points, temps_min, temps_max)
-    graph.afficher_temps_trajet()  
+    graph.afficher_temps_trajet()  # Afficher les temps de trajet
+    graph.afficher_ville_depart()  # Afficher la ville de départ/arrivée
     ants = [Ant(i+1) for i in range(nombres_camions)]
 
-    graph.afficher_temps_trajet() 
     simulate(graph, logistics, ants)
     draw_routes(graph, ants)
 
