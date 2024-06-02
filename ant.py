@@ -61,7 +61,7 @@ class Generation_data:
         tab_camion = [[] for _ in range(self.nbres_camions)]
         for route in self.grand_tableau:
             camion_index = route[2] - 1
-            tab_camion[camion_index].extend([route[0], route[1]])
+            tab_camion[camion_index].append((route[0], route[1]))
         return tab_camion
 
     def affichage_camions(self):
@@ -88,78 +88,90 @@ def simulate(graph, logistics, ants, iterations=100):
                 ant = ants[ant_index]
                 current_city = start_city
 
-                for i in range(0, len(routes), 2):
-                    collection_city = routes[i]
-                    delivery_city = routes[i + 1]
+                full_route = [start_city]  # Start at the start city
 
-                    # Ensure current_city is included in sub_matrix_indices
-                    sub_matrix_indices = [start_city, collection_city, delivery_city]
-                    if current_city not in sub_matrix_indices:
-                        sub_matrix_indices.append(current_city)
-                    
-                    sub_matrix = extract_submatrix(graph.travel_time, sub_matrix_indices)
-                    sub_pheromone = extract_submatrix(graph.pheromone, sub_matrix_indices)
+                for collection_city, delivery_city in routes:
+                    full_route.append(collection_city)
+                    full_route.append(delivery_city)
+                full_route.append(start_city)  # Return to the start city
 
-                    current_index = sub_matrix_indices.index(current_city)
+                ant.route = full_route[:]
+                ant.total_time = 0
 
-                    # Calculate probabilities for moving to the next city
-                    probabilities = np.array([
-                        (sub_pheromone[current_index][j] ** alpha) * ((1.0 / sub_matrix[current_index][j]) ** beta)
-                        if sub_matrix[current_index][j] > 0 else 0 for j in range(len(sub_matrix))
-                    ])
-                    
-                    # Normalize probabilities safely
-                    if probabilities.sum() == 0:
-                        probabilities = np.ones_like(probabilities) / len(probabilities)  # Equal probability if sum is 0
-                    else:
-                        probabilities /= probabilities.sum()
-
-                    # Choose the next city based on probabilities
-                    next_city_index = np.random.choice(range(len(sub_matrix)), p=probabilities)
-                    next_city = sub_matrix_indices[next_city_index]
-                    ant.route.append(next_city)
-                    ant.total_time += sub_matrix[current_index][next_city_index]
-                    
-                    # Update pheromones
-                    try:
-                        travel_time = sub_matrix[current_index][next_city_index]
-                        if travel_time > 0:
-                            graph.pheromone[current_city-1, next_city-1] *= (1 - evaporation)
-                            graph.pheromone[current_city-1, next_city-1] += pheromone_boost / travel_time
-                    except ZeroDivisionError:
-                        print(f"Error: Division by zero when updating pheromones between {current_city} and {next_city}")
-
-                    current_city = next_city
-
-                # Return to the start city at the end of the route
-                if current_city != start_city:
-                    ant.route.append(start_city)
-                    ant.total_time += graph.travel_time[current_city-1, start_city-1]
+                for i in range(len(full_route) - 1):
+                    ant.total_time += graph.travel_time[full_route[i] - 1][full_route[i + 1] - 1]
 
                 # Check if this is the best route for this truck
                 if ant.total_time < best_times[camion_index]:
                     best_times[camion_index] = ant.total_time
                     best_routes[camion_index] = ant.route[:]
 
+                # Update pheromones
+                for i in range(len(full_route) - 1):
+                    graph.pheromone[full_route[i] - 1][full_route[i + 1] - 1] *= (1 - evaporation)
+                    graph.pheromone[full_route[i] - 1][full_route[i + 1] - 1] += pheromone_boost / graph.travel_time[full_route[i] - 1][full_route[i + 1] - 1]
+
     # Print best routes and their times
     for i, (route, time) in enumerate(zip(best_routes, best_times)):
         print(f"Best route for truck {i + 1}: {route} with total time {time}")
 
-def draw_routes(graph, ants):
+    return best_routes
+
+def draw_ants_routes(graph, ants):
     plt.figure(figsize=(10, 8))
 
+    # Plot the routes of all ants
     for ant in ants:
         route_coords = [graph.coordinates[city] for city in ant.route]
-        plt.plot([coord[0] for coord in route_coords], [coord[1] for coord in route_coords], 'o-', label=f"Ant {ant.id}")
+        plt.plot([coord[0] for coord in route_coords], [coord[1] for coord in route_coords], 'o-', alpha=0.5, label=f"Ant {ant.id}")
 
+    # Annotate the cities
     for city, coords in graph.coordinates.items():
         plt.text(coords[0], coords[1], city, fontsize=12, ha='right')
     plt.legend()
-    plt.title("Routes for all ants")
+    plt.title("Routes for All Ants")
     plt.xlabel("X Coordinate")
     plt.ylabel("Y Coordinate")
     plt.grid(True)
     plt.show()
+
+def draw_trucks_routes(graph, best_routes):
+    plt.figure(figsize=(10, 8))
+
+    colors = ['b', 'g', 'r', 'c', 'm', 'y', 'k', 'orange', 'purple', 'brown']
+    drawn_routes = {}  # To keep track of drawn routes to superimpose them
+
+    for i, route in enumerate(best_routes):
+        route_key = tuple(route[:2])  # Use the first two cities as the key
+        color = colors[i % len(colors)]
+        marker_style = 'o' if route_key not in drawn_routes else 's'
+
+        route_coords = [graph.coordinates[city] for city in route]
+        plt.plot([coord[0] for coord in route_coords], [coord[1] for coord in route_coords], marker_style+'-', color=color, label=f"Truck {i + 1} Best Route")
+
+        # Update drawn routes dictionary
+        if route_key not in drawn_routes:
+            drawn_routes[route_key] = color
+
+    # Annotate the cities
+    for city, coords in graph.coordinates.items():
+        plt.text(coords[0], coords[1], city, fontsize=12, ha='right')
+    plt.legend()
+    plt.title("Best Routes for All Trucks")
+    plt.xlabel("X Coordinate")
+    plt.ylabel("Y Coordinate")
+    plt.grid(True)
+    plt.show()
+
+def print_truck_routes(best_routes):
+    for i, route in enumerate(best_routes):
+        route_str = " -> ".join(map(str, route))
+        print(f"Truck {i + 1} route: {route_str}")
+
+def print_object_assignments(logistics):
+    for i, camions in enumerate(logistics.tableau_camion):
+        obj_str = ", ".join([f"({collect}->{deliver})" for collect, deliver in camions])
+        print(f"Truck {i + 1} objects: {obj_str}")
 
 def main():
     random.seed(42)
@@ -170,7 +182,8 @@ def main():
     nombres_fourmis = 10
     temps_min = 10
     temps_max = 100
-    
+
+    print(f"Number of objects: {nombres_objets}")
     logistics = Generation_data(nombres_objets, nombres_camions)
     logistics.affichage_camions()
 
@@ -180,7 +193,10 @@ def main():
     graph.afficher_ville_depart()
     ants = [Ant(i + 1) for i in range(nombres_fourmis)]
 
-    simulate(graph, logistics, ants)
-    draw_routes(graph, ants)
+    best_routes = simulate(graph, logistics, ants)
+    print_truck_routes(best_routes)
+    print_object_assignments(logistics)
+    draw_ants_routes(graph, ants)
+    draw_trucks_routes(graph, best_routes)
 
 main()
